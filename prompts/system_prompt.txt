@@ -857,7 +857,6 @@ DATA_UPDATE: {
   "outside_years": "0",
   "outside_location": "",
   "outside_transferred": "否",
-  "avg_salary_2025": "15767",
   "social_avg_wage": "11321",
   "flex_payment_bases": "下限60%:6792元,上限300%:33963元",
   "flex_monthly_payments": "低档60%:1358元/月,中档100%:2264元/月,高档300%:6793元/月"
