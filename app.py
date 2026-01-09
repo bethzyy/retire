@@ -150,10 +150,12 @@ def chat():
                     break
 
         # 尝试加载用户历史数据（如果有名字）
+        # 重要：每次都从文件重新加载最新数据，确保用户手动修改的数据被使用
         user_data = {}
         if user_name:
             user_data = user_manager.load_user_data(user_name) or {}
             session['has_history'] = bool(user_data)
+            print(f"[DEBUG] /api/chat: 重新从文件加载用户数据，keys = {list(user_data.keys())}")
         else:
             session['has_history'] = False
 
@@ -163,8 +165,9 @@ def chat():
 
         # 如果用户有历史数据，在系统提示词中说明
         if user_data and session.get('has_history'):
-            history_info = "\n\n## 用户历史数据\n"
-            history_info += f"该用户（名字：{user_name}）之前已经提供过以下信息，请直接使用这些数据，并用名字称呼用户：\n"
+            history_info = "\n\n## ⚠️ 重要：用户数据已更新\n"
+            history_info += f"用户（名字：{user_name}）的最新数据如下（已从文件重新加载）：\n"
+            history_info += "**请务必使用以下最新数据进行计算，不要使用对话历史中的旧数据！**\n\n"
 
             # 列出已有的数据
             for key, value in user_data.items():
@@ -183,6 +186,11 @@ def chat():
                         'actual_years': '实际缴费年限',
                         'account_balance': '个人账户余额',
                         'special_title': '高级职称',
+                        'has_outside_province': '是否有外地缴费',
+                        'outside_years': '外地缴费年限',
+                        'outside_location': '外地缴费地点',
+                        'outside_transferred': '是否已转入',
+                        'has_professional_title': '是否有高级职称',
                         # 社保数据(非必填,AI搜索或用户提供)
                         'social_avg_wage': '社平工资(元/月)',
                         'flex_payment_bases': '灵活就业缴费基数上下限',
@@ -198,6 +206,13 @@ def chat():
                 for field, name in missing_fields:
                     history_info += f"- {name}\n"
                 history_info += "\n请继续询问缺失的信息，不要重复问已有信息。"
+            else:
+                history_info += "\n✓ 所有必要信息已收集完毕，可以进行计算分析。\n"
+
+            history_info += "\n**重要提醒：**"
+            history_info += "\n- 在回复的 DATA_UPDATE 中，只包含**本次对话中新获取或修改的字段**"
+            history_info += "\n- 不要包含上述已列出的字段（除非用户明确修改了）"
+            history_info += "\n- 这样可以避免用户手动修改的数据被旧数据覆盖\n"
 
             # 将历史信息插入到系统提示词
             system_prompt = history_info + "\n\n" + system_prompt
@@ -239,6 +254,67 @@ def chat():
 
         # 获取对话历史
         conversation_history = session.get('conversation_history', [])
+
+        # ⚠️ 重要：检测用户是否手动修改了数据
+        # 如果用户手动修改了数据（通过界面编辑），需要强制AI使用最新数据
+        user_manually_updated = session.pop('user_data_manually_updated', False)
+        update_time = session.pop('user_data_update_time', None)
+
+        if user_manually_updated and user_name:
+            # 用户手动修改了数据，强制重新加载最新数据
+            latest_user_data = user_manager.load_user_data(user_name) or {}
+
+            # 在对话历史中插入一个系统消息，明确告诉AI使用最新数据
+            data_refresh_message = {
+                'role': 'user',
+                'content': f'\n\n⚠️⚠️⚠️ 【系统紧急提醒】用户刚刚手动修改了数据！⚠️⚠️⚠️\n\n'
+            }
+
+            if update_time:
+                data_refresh_message['content'] += f'数据修改时间：{update_time}\n\n'
+
+            data_refresh_message['content'] += '请立即忽略对话历史中的所有旧数据，务必使用以下最新数据进行计算：\n\n'
+
+            # 添加最新的用户数据
+            if latest_user_data:
+                field_names = {
+                    'gender': '性别',
+                    'birth_year': '出生年份',
+                    'birth_month': '出生月份',
+                    'hukou_type': '户口性质',
+                    'unemployment_status': '失业状态',
+                    'unemployment_start': '失业开始时间',
+                    'retirement_age': '退休年龄',
+                    'first_work_year': '首次工作时间',
+                    'total_work_years': '累计工作年限',
+                    'actual_years': '实际缴费年限',
+                    'deemed_years': '视同缴费年限',
+                    'account_balance': '个人账户余额',
+                    'special_title': '高级职称',
+                    'has_outside_province': '是否有外地缴费',
+                    'outside_years': '外地缴费年限',
+                    'outside_location': '外地缴费地点',
+                    'outside_transferred': '是否已转入',
+                    'has_professional_title': '是否有高级职称',
+                    'social_avg_wage': '社平工资',
+                    'flex_payment_bases': '缴费基数',
+                    'flex_monthly_payments': '月缴费额'
+                }
+
+                data_refresh_message['content'] += '【最新用户数据】\n'
+                for key, value in latest_user_data.items():
+                    if key not in ['created_at', 'last_updated', 'user_name'] and value:
+                        if key in field_names:
+                            data_refresh_message['content'] += f"- {field_names[key]}: {value}\n"
+
+                data_refresh_message['content'] += '\n🚨 重要：请基于以上最新数据进行计算，不要使用对话历史中的任何旧值！\n'
+                data_refresh_message['content'] += '🚨 在 DATA_UPDATE 中只包含本次对话中新获取的字段，不要重复上述已有字段。\n'
+
+            # 将这个刷新消息插入到对话历史的最后
+            conversation_history.append(data_refresh_message)
+
+            print(f"[DEBUG] 检测到用户手动修改数据，已插入数据刷新消息")
+            print(f"[DEBUG] 最新用户数据 keys: {list(latest_user_data.keys())}")
 
         # 调用AI
         response = ai_client.chat(
@@ -340,11 +416,26 @@ def chat():
             'content': ai_reply
         })
 
-        # 限制历史记录长度（保留最近20轮）
-        if len(conversation_history) > 40:
-            conversation_history = conversation_history[-40:]
+        # 限制历史记录长度（保留最近10轮，减少session大小）
+        # 同时对每条消息内容进行截断（最多保留2000字符）
+        max_history_turns = 10
+        max_message_length = 2000
+
+        if len(conversation_history) > max_history_turns * 2:
+            conversation_history = conversation_history[-max_history_turns * 2:]
+
+        # 截断过长的消息
+        for msg in conversation_history:
+            if len(msg.get('content', '')) > max_message_length:
+                msg['content'] = msg['content'][:max_message_length] + "\n[消息过长，已截断]"
 
         session['conversation_history'] = conversation_history
+
+        # 检查session大小
+        import sys
+        session_size = sys.getsizeof(str(session))
+        if session_size > 3000:  # 如果session超过3KB，发出警告
+            print(f"[WARNING] Session size too large: {session_size} bytes")
 
         # 再次尝试提取名字（在更新对话历史后）
         # 因为用户的回答现在才在历史中
@@ -522,6 +613,13 @@ def update_user_data():
 
         # 保存更新后的数据
         user_manager.save_user_data(user_name, existing_data)
+
+        # ⚠️ 重要：设置标记，告诉系统用户数据已被手动修改
+        # 这样在下次 AI 调用时，会强制使用最新数据
+        session['user_data_manually_updated'] = True
+        session['user_data_update_time'] = datetime.now().isoformat()
+
+        print(f"[INFO] 用户 {user_name} 手动修改了数据，已设置刷新标记")
 
         return jsonify({
             'success': True,
