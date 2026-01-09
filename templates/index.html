@@ -8,6 +8,8 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- html2canvas for exporting to image -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -353,6 +355,10 @@
 
         <div class="main-content">
             <div class="chat-area">
+                <!-- 对话标题区域 -->
+                <div style="padding: 10px 20px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0;">
+                    <span style="font-size: 14px; color: #666; font-weight: bold;">💬 对话记录</span>
+                </div>
                 <div class="messages" id="messages">
                     <div class="welcome-message">
                         <h3>👋 欢迎使用退休金测算系统</h3>
@@ -684,10 +690,169 @@
             }
 
             messageDiv.appendChild(contentDiv);
+
+            // 为AI消息添加导出按钮（仅在测算结果时显示）
+            if (role === 'assistant') {
+                // 检查是否包含测算结果的关键词
+                const isCalculationResult = /测算|计算|养老金|档位|推荐|回本|缴费|元\/月/.test(content);
+
+                if (isCalculationResult) {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.style.cssText = `
+                        margin-top: 15px;
+                        padding-top: 10px;
+                        border-top: 1px solid #e0e0e0;
+                        text-align: right;
+                    `;
+
+                    const exportBtn = document.createElement('button');
+                    exportBtn.innerHTML = '📷 导出此结果';
+                    exportBtn.style.cssText = `
+                        padding: 8px 16px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 5px;
+                    `;
+                    exportBtn.onmouseover = function() {
+                        this.style.transform = 'scale(1.05)';
+                        this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                    };
+                    exportBtn.onmouseout = function() {
+                        this.style.transform = 'scale(1)';
+                        this.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+                    };
+                    exportBtn.onclick = function() {
+                        // 传递当前消息的内容用于导出
+                        exportSingleMessage(contentDiv);
+                    };
+
+                    actionsDiv.appendChild(exportBtn);
+                    messageDiv.appendChild(actionsDiv);
+                }
+            }
+
             messagesDiv.appendChild(messageDiv);
 
             // 滚动到底部
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 导出单条消息为图片
+        async function exportSingleMessage(messageContentDiv) {
+            if (!messageContentDiv) {
+                alert('无法获取测算结果');
+                return;
+            }
+
+            try {
+                // 显示导出中提示
+                const originalHTML = messageContentDiv.innerHTML;
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '⏳ 导出中...';
+                button.disabled = true;
+
+                // 创建一个临时容器用于导出
+                const exportContainer = document.createElement('div');
+                exportContainer.style.cssText = `
+                    position: fixed;
+                    top: -9999px;
+                    left: -9999px;
+                    width: 800px;
+                    padding: 40px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+                `;
+
+                // 创建内容卡片
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: #ffffff;
+                    border-radius: 20px;
+                    padding: 40px;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    border: 3px solid #667eea;
+                `;
+
+                // 添加标题
+                const title = document.createElement('div');
+                title.style.cssText = `
+                    text-align: center;
+                    margin-bottom: 30px;
+                    padding-bottom: 20px;
+                    border-bottom: 3px solid #667eea;
+                `;
+                title.innerHTML = `
+                    <h1 style="margin: 0; color: #667eea; font-size: 32px; font-weight: bold;">🎯 北京退休金测算报告</h1>
+                    <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                        生成时间：${new Date().toLocaleString('zh-CN')}
+                    </p>
+                `;
+
+                // 复制消息内容
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    color: #333;
+                    line-height: 1.8;
+                    font-size: 15px;
+                `;
+                content.innerHTML = messageContentDiv.innerHTML;
+
+                // 组装导出容器
+                card.appendChild(title);
+                card.appendChild(content);
+                exportContainer.appendChild(card);
+                document.body.appendChild(exportContainer);
+
+                // 使用 html2canvas 截图（修复雾化问题）
+                const canvas = await html2canvas(card, {
+                    backgroundColor: '#ffffff',  // 使用白色背景，避免透明度问题
+                    scale: 2,                     // 2倍分辨率
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true,
+                    opacity: 1,                   // 明确设置不透明度为1
+                    letterRendering: true,        // 优化文字渲染
+                });
+
+                // 移除临时容器
+                document.body.removeChild(exportContainer);
+
+                // 转换为图片并下载
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    link.download = `退休金测算报告_${timestamp}.png`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+
+                    // 恢复按钮状态
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+
+                    console.log('✅ 图片导出成功');
+                }, 'image/png', 1.0);  // 质量 1.0（最高质量）
+
+            } catch (error) {
+                console.error('❌ 导出图片失败:', error);
+                alert('导出图片失败，请重试\n错误信息: ' + error.message);
+
+                // 恢复按钮状态
+                const button = event.target;
+                button.innerHTML = '📷 导出此结果';
+                button.disabled = false;
+            }
         }
 
         async function resetConversation() {
