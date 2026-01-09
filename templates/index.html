@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北京退休金测算系统</title>
+    <!-- 使用SVG emoji作为favicon,避免404错误 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            display: none; /* 隐藏标题栏，增加可用空间 */
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 20px); /* 使用视口高度，减去一些边距 */
+            min-height: 750px;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            background: white;
+        }
+
+        .image-upload-section {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .image-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: white;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #667eea;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .image-upload-btn:hover {
+            background: #667eea;
+            color: white;
+            border-style: solid;
+        }
+
+        .image-preview-container {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .image-preview-container.show {
+            display: block;
+        }
+
+        .image-preview-item {
+            position: relative;
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .image-preview-item img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .image-preview-item .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-reset {
+            background: #ff6b6b;
+            color: white;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .btn-reset:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+
+        .sidebar {
+            width: 380px;
+            padding: 20px;
+            background: #f8f9fa;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .info-item {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 3px solid #667eea;
+        }
+
+        .info-item .label {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .info-item .value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .info-item.missing {
+            border-left: 3px solid #999;
+            opacity: 0.6;
+        }
+
+        .recommendation-box {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #667eea;
+        }
+
+        .recommendation-box .title {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .recommendation-box .content {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .welcome-message {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-message h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .welcome-message ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .welcome-message li {
+            margin-bottom: 5px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 北京退休金测算系统</h1>
+            <p>基于真实政策 · 智能对比三档缴费 · 找到最优方案</p>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-area">
+                <div class="messages" id="messages">
+                    <div class="welcome-message">
+                        <h3>👋 欢迎使用退休金测算系统</h3>
+                        <p>我是您的专业社保顾问，将帮您：</p>
+                        <ul>
+                            <li>✓ 精确计算退休金数额</li>
+                            <li>✓ 对比三档缴费方案</li>
+                            <li>✓ 找到性价比最高的选择</li>
+                            <li>✓ 分析回本周期和净收益</li>
+                        </ul>
+                        <p style="margin-top: 10px; color: #667eea; font-weight: bold;">请告诉我您的基本情况，我们开始吧！</p>
+                    </div>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>正在分析计算...</p>
+                    </div>
+                </div>
+
+                <!-- 图片上传区域 -->
+                <div class="image-upload-section">
+                    <label class="image-upload-btn">
+                        <span>📷 上传保险截图或相关文件（一次一张）</span>
+                        <input
+                            type="file"
+                            id="imageInput"
+                            accept="image/*"
+                            style="display: none;"
+                            onchange="handleImageUpload(event)"
+                        >
+                    </label>
+                    <div class="image-preview-container" id="imagePreviewContainer">
+                        <div id="imagePreviewList"></div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            id="userInput"
+                            placeholder="例如：我是1980年出生的北京户口男性，现在失业了..."
+                            onkeypress="if(event.key === 'Enter') sendMessage()"
+                        >
+                        <button class="btn btn-send" onclick="sendMessage()" id="sendBtn">发送</button>
+                        <button class="btn btn-reset" onclick="resetConversation()" title="清空所有对话记录和历史数据">🗑️ 清空记录</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <h3>👤 您的信息</h3>
+                <div id="userInfo">
+                    <p style="color: #999; font-size: 14px;">正在加载...</p>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <button onclick="editUserInfo()" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        ✏️ 修改信息
+                    </button>
+                    <button onclick="saveUserInfo()" style="width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; margin-top: 10px;">
+                        💾 保存修改
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationHistory = [];
+        let uploadedImages = []; // 存储已上传的图片数据
+
+        // 带超时的fetch包装函数（解决Chrome浏览器兼容性问题）
+        async function fetchWithTimeout(url, options, timeout = 120000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
+        }
+
+        // 处理图片上传
+        function handleImageUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            // 只处理第一张图片（一次只允许上传一张）
+            const file = files[0];
+
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+                alert('请上传图片文件');
+                return;
+            }
+
+            // 验证文件大小（最大10MB）
+            if (file.size > 10 * 1024 * 1024) {
+                alert('图片大小不能超过10MB');
+                return;
+            }
+
+            // 读取图片
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+
+                // 清空之前的图片
+                uploadedImages = [];
+                const previewList = document.getElementById('imagePreviewList');
+                previewList.innerHTML = '';
+
+                // 添加到已上传图片列表
+                uploadedImages.push(imageData);
+
+                // 显示预览
+                const imageId = 'image-' + Date.now() + '-' + Math.random();
+                const previewItem = document.createElement('div');
+                previewItem.className = 'image-preview-item';
+                previewItem.id = imageId;
+                previewItem.innerHTML = `
+                    <img src="${imageData}" alt="上传的图片">
+                    <button class="remove-btn" onclick="removeImage('${imageId}')">×</button>
+                `;
+                previewList.appendChild(previewItem);
+
+                // 显示预览容器
+                document.getElementById('imagePreviewContainer').classList.add('show');
+
+                // 在聊天记录中显示上传的图片
+                appendMessage('user', '<div class="chat-image-container"><img src="' + imageData + '" alt="上传的图片" style="max-width: 100%; border-radius: 10px;"></div>');
+
+                // 自动发送图片给AI解析
+                sendImageToAI(imageData);
+            };
+            reader.readAsDataURL(file);
+
+            // 清空input，允许重复上传同一文件
+            event.target.value = '';
+        }
+
+        // 发送图片给AI解析
+        async function sendImageToAI(imageData) {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('active');
+            }
+            document.getElementById('sendBtn').disabled = true;
+
+            try {
+                const response = await fetchWithTimeout('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: '请识别这张图片中的保险信息',
+                        images: [imageData]
+                    })
+                }, 120000); // 120秒超时，解决Chrome浏览器兼容性问题
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.reply) {
+                        appendMessage('assistant', data.reply);
+
+                        // 更新对话历史
+                        if (data.conversation_history) {
+                            conversationHistory = data.conversation_history;
+                        }
+
+                        // 更新侧边栏
+                        loadUserData();
+                    } else {
+                        appendMessage('assistant', '抱歉，图片识别失败。请重试或提供更清晰的图片。');
+                    }
+                } else {
+                    appendMessage('assistant', '网络错误，请稍后重试。');
+                }
+            } catch (error) {
+                console.error('发送图片失败:', error);
+                appendMessage('assistant', '发送图片失败，请重试。');
+            } finally {
+                const loadingElement = document.getElementById('loading');
+                if (loadingElement) {
+                    loadingElement.classList.remove('active');
+                }
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
+
+        // 移除图片
+        function removeImage(imageId) {
+            const previewItem = document.getElementById(imageId);
+            if (!previewItem) return;
+
+            // 从数组中移除
+            const imgSrc = previewItem.querySelector('img').src;
+            const index = uploadedImages.indexOf(imgSrc);
+            if (index > -1) {
+                uploadedImages.splice(index, 1);
+            }
+
+            // 移除DOM元素
+            previewItem.remove();
+
+            // 如果没有图片了，隐藏预览容器
+            const previewList = document.getElementById('imagePreviewList');
+            if (previewList.children.length === 0) {
+                document.getElementById('imagePreviewContainer').classList.remove('show');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+
+            if (!message && uploadedImages.length === 0) return;
+
+            // 清空输入框
+            input.value = '';
+
+            // 如果有图片，先在聊天中显示
+            if (uploadedImages.length > 0) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message user';
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+
+                // 添加文本消息
+                if (message) {
+                    const textDiv = document.createElement('div');
+                    textDiv.textContent = message;
+                    contentDiv.appendChild(textDiv);
+                }
+
+                // 添加图片预览
+                const imagesDiv = document.createElement('div');
+                imagesDiv.style.marginTop = '10px';
+                imagesDiv.style.display = 'flex';
+                imagesDiv.style.flexWrap = 'wrap';
+                imagesDiv.style.gap = '10px';
+
+                uploadedImages.forEach(imgData => {
+                    const img = document.createElement('img');
+                    img.src = imgData;
+                    img.style.maxWidth = '200px';
+                    img.style.maxHeight = '200px';
+                    img.style.borderRadius = '8px';
+                    img.style.border = '2px solid rgba(255,255,255,0.3)';
+                    imagesDiv.appendChild(img);
+                });
+
+                contentDiv.appendChild(imagesDiv);
+                messageDiv.appendChild(contentDiv);
+
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else if (message) {
+                // 只显示文本消息
+                appendMessage('user', message);
+            }
+
+            // 显示加载动画
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('active');
+            }
+            document.getElementById('sendBtn').disabled = true;
+
+            try {
+                // 发送请求（包含图片，120秒超时解决Chrome浏览器兼容性问题）
+                const response = await fetchWithTimeout('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message || '（上传了图片）',
+                        images: uploadedImages // 发送图片数据
+                    })
+                }, 120000); // 120秒超时，解决Chrome浏览器兼容性问题
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 显示AI回复
+                    appendMessage('assistant', data.reply);
+                    conversationHistory = data.conversation_history || [];
+                } else {
+                    appendMessage('assistant', '❌ ' + (data.error || '请求失败'));
+                }
+
+                // 清空图片列表
+                uploadedImages = [];
+                document.getElementById('imagePreviewList').innerHTML = '';
+                document.getElementById('imagePreviewContainer').classList.remove('show');
+
+                // 刷新用户数据
+                loadUserData();
+
+            } catch (error) {
+                appendMessage('assistant', '❌ 网络错误: ' + error.message);
+            } finally {
+                // 隐藏加载动画
+                const loadingElement = document.getElementById('loading');
+                if (loadingElement) {
+                    loadingElement.classList.remove('active');
+                }
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
+
+        function appendMessage(role, content) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            // AI回复使用markdown渲染,用户消息保持纯文本
+            if (role === 'assistant') {
+                contentDiv.innerHTML = marked.parse(content);
+            } else {
+                contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+            }
+
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+
+            // 滚动到底部
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function resetConversation() {
+            if (!confirm('⚠️ 确定要清空所有记录吗？\n\n这将清空：\n• 所有对话记录\n• 您的历史数据文件\n• 您的登录信息\n\n清空后需要重新登录！')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reset', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 清空消息区域并显示登录界面
+                    const messagesDiv = document.getElementById('messages');
+                    messagesDiv.innerHTML = '';
+
+                    // 清空图片列表
+                    uploadedImages = [];
+                    document.getElementById('imagePreviewList').innerHTML = '';
+                    document.getElementById('imagePreviewContainer').classList.remove('show');
+
+                    // 清空对话历史
+                    conversationHistory = [];
+
+                    // 显示登录界面
+                    checkUserName();
+
+                    // 清空侧边栏
+                    document.getElementById('userInfo').innerHTML = '<p style="color: #999; font-size: 14px;">请先登录</p>';
+                    document.getElementById('recommendations').innerHTML = '<p style="color: #999; font-size: 14px;">暂无建议</p>';
+                }
+            } catch (error) {
+                alert('清空失败: ' + error.message);
+            }
+        }
+
+        async function loadUserData() {
+            try {
+                console.log('[DEBUG] loadUserData: 开始加载用户数据...');
+                const response = await fetch('/api/user-data');
+                const data = await response.json();
+
+                console.log('[DEBUG] loadUserData: API返回数据 =', JSON.stringify(data, null, 2));
+
+                if (data.success) {
+                    // 显示用户信息
+                    const userInfoDiv = document.getElementById('userInfo');
+                    const userData = data.data || {};
+
+                    console.log('[DEBUG] loadUserData: userData =', JSON.stringify(userData, null, 2));
+                    console.log('[DEBUG] loadUserData: user_name =', data.user_name);
+
+                    // 定义字段映射（中文名称 -> 数据字段）
+                    const fieldMapping = {
+                        '名字': 'user_name',
+                        '性别': 'gender',
+                        '出生年份': 'birth_year',
+                        '出生月份': 'birth_month',
+                        '户口性质': 'hukou_type',
+                        '失业状态': 'unemployment_status',
+                        '失业开始时间': 'unemployment_start',
+                        '预计退休年龄': 'retirement_age',
+                        '首次工作年份': 'first_work_year',
+                        '累计工作年限': 'total_work_years',
+                        '实际缴费年限': 'actual_years',
+                        '个人账户余额': 'account_balance',
+                        '高级职称': 'special_title',
+                        '外地缴费': 'has_outside_province',
+                        '外地缴费年限': 'outside_years',
+                        '外地参保地区': 'outside_location',
+                        '是否已转入': 'outside_transferred',
+                        '社平工资(元/月)': 'social_avg_wage',
+                        '灵活就业缴费基数': 'flex_payment_bases',
+                        '月缴费额': 'flex_monthly_payments'
+                    };
+
+                    // 构建用户信息HTML
+                    let userInfoHtml = '';
+
+                    if (data.user_name) {
+                        userInfoHtml += `
+                            <div class="info-item">
+                                <div class="label">名字</div>
+                                <div class="value">${data.user_name}</div>
+                            </div>
+                        `;
+                    }
+
+                    // 添加其他已收集的信息
+                    for (const [label, field] of Object.entries(fieldMapping)) {
+                        if (field === 'user_name') continue; // 已处理
+
+                        const value = userData[field];
+                        console.log(`[DEBUG] loadUserData: 字段 ${field} = ${value}`);
+                        if (value && value !== 'null' && value !== '') {
+                            userInfoHtml += `
+                                <div class="info-item">
+                                    <div class="label">${label}</div>
+                                    <div class="value">${value}</div>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // 如果没有信息，显示提示
+                    if (!userInfoHtml) {
+                        userInfoHtml = '<p style="color: #999; font-size: 14px;">暂无信息</p>';
+                    }
+
+                    userInfoDiv.innerHTML = userInfoHtml;
+                }
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+                document.getElementById('userInfo').innerHTML = '<p style="color: #f44336; font-size: 14px;">加载失败</p>';
+            }
+        }
+
+        // 检查是否已经有用户名字
+        function checkUserName() {
+            // 每次都显示登录框，不自动加载
+            // 清空localStorage中的旧名字
+            localStorage.removeItem('retireUserName');
+
+            // 总是显示登录模态框
+            document.getElementById('nameModal').style.display = 'flex';
+        }
+
+        // 提交名字
+        function submitName() {
+            const nameInput = document.getElementById('nameInput');
+            const userName = nameInput.value.trim();
+
+            if (!userName) {
+                alert('请输入您的名字');
+                return;
+            }
+
+            // 不再保存到localStorage，每次都需要重新输入
+
+            // 隐藏模态框
+            document.getElementById('nameModal').style.display = 'none';
+
+            // 发送名字给后端
+            sendNameToBackend(userName);
+        }
+
+        // 发送名字给后端
+        async function sendNameToBackend(userName) {
+            try {
+                const response = await fetch('/api/set-name', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: userName
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('名字已保存:', userName);
+                    console.log('用户历史数据:', data.has_history);
+
+                    // 加载用户数据到右侧边栏
+                    await loadUserData();
+
+                    // 显示欢迎消息
+                    if (data.has_history) {
+                        appendMessage('assistant', `欢迎回来，${userName}！我已经加载了您的历史数据。让我们继续吧。`);
+                    } else {
+                        appendMessage('assistant', `您好，${userName}！我是您的北京社保和退休金计算专家。我将逐步了解您的信息，大概需要14个问题。`);
+                    }
+                } else {
+                    console.error('保存名字失败');
+                    alert('保存名字失败，请重试');
+                }
+            } catch (error) {
+                console.error('发送名字失败:', error);
+                alert('发送名字失败，请重试');
+            }
+        }
+
+        // 编辑用户信息 - 将侧边栏切换为编辑模式
+        let isEditing = false;  // 标记是否处于编辑模式
+        let originalUserData = null;  // 保存原始数据用于取消编辑
+
+        async function editUserInfo() {
+            if (isEditing) {
+                // 如果已经在编辑模式,则取消编辑
+                cancelEdit();
+                return;
+            }
+
+            try {
+                // 获取当前用户数据
+                const response = await fetch('/api/user-data');
+                const data = await response.json();
+
+                if (data.success) {
+                    isEditing = true;
+                    originalUserData = JSON.parse(JSON.stringify(data)); // 深拷贝保存原始数据
+
+                    // 修改按钮文本
+                    const editBtn = document.querySelector('button[onclick="editUserInfo()"]');
+                    editBtn.textContent = '❌ 取消编辑';
+
+                    // 将userInfo区域切换为可编辑表单
+                    const userInfoDiv = document.getElementById('userInfo');
+                    const userData = data.data || {};
+
+                    // 定义所有可编辑字段
+                    const editableFields = {
+                        'user_name': '名字',
+                        'gender': '性别',
+                        'birth_year': '出生年份',
+                        'birth_month': '出生月份',
+                        'hukou_type': '户口性质',
+                        'employment_status': '就业状态',
+                        'first_work_year': '首次工作年份',
+                        'total_work_years': '累计工作年限',
+                        'deemed_payment_years': '视同缴费年限',
+                        'actual_payment_years': '实际缴费年限',
+                        'account_balance': '个人账户余额',
+                        'has_outside_province': '外地缴费经历',
+                        'has_professional_title': '高级职称',
+                        'retirement_age': '预期退休年龄',
+                        'social_avg_wage': '社平工资(元/月)',
+                        'flex_payment_bases': '灵活就业缴费基数(100%档,元/月)',
+                        'flex_monthly_payments': '月缴费额'
+                    };
+
+                    let formHtml = '<div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">';
+
+                    for (const [field, label] of Object.entries(editableFields)) {
+                        const value = userData[field] || data[field] || '';
+                        console.log(`字段 ${field}: userData[field]=${userData[field]}, data[field]=${data[field]}, 最终value=${value}`);
+
+                        // 为不同字段类型使用不同的输入控件
+                        if (field === 'gender') {
+                            formHtml += `
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: block; font-size: 13px; color: #666; margin-bottom: 4px;">${label}</label>
+                                    <select id="edit_${field}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                        <option value="男" ${value === '男' ? 'selected' : ''}>男</option>
+                                        <option value="女" ${value === '女' ? 'selected' : ''}>女</option>
+                                    </select>
+                                </div>
+                            `;
+                        } else if (field === 'hukou_type') {
+                            formHtml += `
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: block; font-size: 13px; color: #666; margin-bottom: 4px;">${label}</label>
+                                    <select id="edit_${field}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                        <option value="城镇" ${value === '城镇' ? 'selected' : ''}>城镇</option>
+                                        <option value="农村" ${value === '农村' ? 'selected' : ''}>农村</option>
+                                    </select>
+                                </div>
+                            `;
+                        } else if (field === 'has_outside_province' || field === 'has_professional_title') {
+                            formHtml += `
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: block; font-size: 13px; color: #666; margin-bottom: 4px;">${label}</label>
+                                    <select id="edit_${field}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                        <option value="是" ${value === '是' ? 'selected' : ''}>是</option>
+                                        <option value="否" ${(value === '否' || !value) ? 'selected' : ''}>否</option>
+                                    </select>
+                                </div>
+                            `;
+                        } else {
+                            formHtml += `
+                                <div style="margin-bottom: 12px;">
+                                    <label style="display: block; font-size: 13px; color: #666; margin-bottom: 4px;">${label}</label>
+                                    <input
+                                        type="text"
+                                        id="edit_${field}"
+                                        value="${value}"
+                                        style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+                                        placeholder="请输入${label}"
+                                    >
+                                </div>
+                            `;
+                        }
+                    }
+
+                    formHtml += '</div>';
+                    userInfoDiv.innerHTML = formHtml;
+                }
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+                alert('加载用户数据失败,请重试');
+            }
+        }
+
+        // 取消编辑
+        function cancelEdit() {
+            isEditing = false;
+
+            // 恢复按钮文本
+            const editBtn = document.querySelector('button[onclick="editUserInfo()"]');
+            editBtn.textContent = '✏️ 修改信息';
+
+            // 重新加载用户数据显示
+            loadUserData();
+        }
+
+        // 保存用户信息
+        async function saveUserInfo() {
+            if (!isEditing) {
+                alert('请先点击"修改信息"按钮进入编辑模式');
+                return;
+            }
+
+            try {
+                // 收集所有编辑的数据
+                const updatedData = {
+                    user_name: document.getElementById('edit_user_name')?.value || '',
+                    gender: document.getElementById('edit_gender')?.value || '',
+                    birth_year: document.getElementById('edit_birth_year')?.value || '',
+                    birth_month: document.getElementById('edit_birth_month')?.value || '',
+                    hukou_type: document.getElementById('edit_hukou_type')?.value || '',
+                    employment_status: document.getElementById('edit_employment_status')?.value || '',
+                    first_work_year: document.getElementById('edit_first_work_year')?.value || '',
+                    total_work_years: document.getElementById('edit_total_work_years')?.value || '',
+                    deemed_payment_years: document.getElementById('edit_deemed_payment_years')?.value || '',
+                    actual_payment_years: document.getElementById('edit_actual_payment_years')?.value || '',
+                    account_balance: document.getElementById('edit_account_balance')?.value || '',
+                    has_outside_province: document.getElementById('edit_has_outside_province')?.value || '',
+                    has_professional_title: document.getElementById('edit_has_professional_title')?.value || '',
+                    retirement_age: document.getElementById('edit_retirement_age')?.value || '',
+                    social_avg_wage: document.getElementById('edit_social_avg_wage')?.value || '',
+                    flex_payment_bases: document.getElementById('edit_flex_payment_bases')?.value || '',
+                    flex_monthly_payments: document.getElementById('edit_flex_monthly_payments')?.value || ''
+                };
+
+                // 发送到后端
+                const response = await fetchWithTimeout('/api/update-user-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                }, 120000);
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('保存成功!');
+                    isEditing = false;
+
+                    // 恢复按钮文本
+                    const editBtn = document.querySelector('button[onclick="editUserInfo()"]');
+                    editBtn.textContent = '✏️ 修改信息';
+
+                    // 重新加载用户数据
+                    await loadUserData();
+                } else {
+                    alert('保存失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('保存用户信息失败:', error);
+                alert('保存失败,请重试');
+            }
+        }
+
+        // 页面加载时检查用户名字
+        window.onload = function() {
+            checkUserName();
+        };
+    </script>
+
+    <!-- 名字输入模态框 -->
+    <div id="nameModal" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    ">
+        <div style="
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        ">
+            <h2 style="
+                color: #667eea;
+                margin-bottom: 30px;
+                font-size: 24px;
+            ">输入用户名：</h2>
+            <input
+                type="text"
+                id="nameInput"
+                placeholder=""
+                style="
+                    width: 100%;
+                    padding: 15px;
+                    font-size: 16px;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 10px;
+                    margin-bottom: 20px;
+                    box-sizing: border-box;
+                "
+                onkeypress="if(event.key === 'Enter') submitName()"
+            >
+            <button
+                onclick="submitName()"
+                style="
+                    width: 100%;
+                    padding: 15px;
+                    font-size: 18px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    font-weight: bold;
+                "
+            >进入系统</button>
+        </div>
+    </div>
+</body>
+</html>

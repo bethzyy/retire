@@ -1,0 +1,90 @@
+{
+  "test_cases": [
+    {
+      "name": "典型用户-40岁男性",
+      "description": "1985年出生，2026年1月开始灵活就业，想了解三档缴费差异",
+      "user_info": {
+        "gender": "男",
+        "birth_year": "1985",
+        "birth_month": "1",
+        "unemployment_start": "2026-01",
+        "location": "北京",
+        "hukou": "城镇",
+        "retirement_age": 60
+      },
+      "expected_questions": [
+        "请问您之前的工作经历和缴费年限是多少？",
+        "您近几年的平均工资大约是多少？",
+        "您是否有视同缴费年限？"
+      ]
+    },
+    {
+      "name": "接近退休-55岁女性",
+      "description": "1970年出生，即将退休，需要紧急测算",
+      "user_info": {
+        "gender": "女",
+        "birth_year": "1970",
+        "birth_month": "6",
+        "unemployment_start": "2025-12",
+        "location": "北京",
+        "hukou": "城镇",
+        "retirement_age": 55
+      },
+      "expected_questions": [
+        "请问您的首次工作时间是？",
+        "您累计缴费年限（含视同缴费）是多少年？",
+        "您个人账户目前累计储存额大约是多少？"
+      ]
+    },
+    {
+      "name": "高龄失业-50岁男性",
+      "description": "1975年出生，失业后选择灵活就业",
+      "user_info": {
+        "gender": "男",
+        "birth_year": "1975",
+        "birth_month": "3",
+        "unemployment_start": "2026-01",
+        "location": "北京",
+        "hukou": "城镇",
+        "retirement_age": 60
+      },
+      "expected_questions": [
+        "您之前的平均缴费基数是多少？",
+        "是否考虑延迟退休？"
+      ]
+    }
+  ],
+  "policy_reference": {
+    "beijing_2024": {
+      "average_salary": 11350,
+      "three_tiers": {
+        "low": 0.6,
+        "middle": 1.0,
+        "high": 3.0
+      },
+      "contribution_rate": 0.2,
+      "personal_account_rate": 0.08,
+      "pooling_account_rate": 0.12
+    }
+  },
+  "scenarios": {
+    "scenario_1": {
+      "name": "低档缴费",
+      "description": "缴费基数 = 社平工资 × 60%",
+      "monthly_contribution": "11350 × 0.6 × 0.2 = 1362元",
+      "personal_account": "11350 × 0.6 × 0.08 = 544元/月"
+    },
+    "scenario_2": {
+      "name": "中档缴费",
+      "description": "缴费基数 = 社平工资 × 100%",
+      "monthly_contribution": "11350 × 1.0 × 0.2 = 2270元",
+      "personal_account": "11350 × 1.0 × 0.08 = 908元/月"
+    },
+    "scenario_3": {
+      "name": "高档缴费",
+      "description": "缴费基数 = 社平工资 × 300%",
+      "monthly_contribution": "11350 × 3.0 × 0.2 = 6810元",
+      "personal_account": "11350 × 3.0 × 0.08 = 2724元/月"
+    }
+  }
+}
